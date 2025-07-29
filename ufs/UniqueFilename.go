@@ -1,5 +1,8 @@
 package ufs
 
+// This file contains the code for the UniqueFilename function
+// to generate a unique filename for a file that already exists
+
 import (
 	"fmt"
 	"os"
