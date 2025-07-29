@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+// ServerData struct to store the server data
+// Stores the data of the metadata of the file hosted in a server
+//
+//
+
 type ServerData struct {
 	Filename      string
 	Filesize      int64
@@ -19,7 +24,74 @@ type ServerData struct {
 	FinalURL      string
 }
 
-func getServerData(downloadURL string) (*ServerData, error) {
+/*
+	To the contributor::
+
+
+	Thanks for your contribution to this project!
+	and please geenrate documentation of your changes and codes properly
+	a format of a documentation is as follows:
+	1. A description of the function
+	2. A description of the parameters
+	3. A description of the return value
+	4. An example of how to use the function if possible also show how to handle error,
+
+// FOllowing is a example for it but it has nothing to do with our code just for reference it is there
+
+// GetFileSize returns the size of the given file in bytes.
+// This function checks if the path exists and is a file before retrieving its size.
+//
+// Parameters:
+//   - path: The absolute or relative path to the file
+//
+// Returns:
+//   - int64: The size of the file in bytes
+//   - Returns 0 if the file doesn't exist, is a directory, or if an error occurs
+//
+// Example:
+//
+//	size := ufs.GetFileSize("/path/to/file.txt")
+//	fmt.Printf("File size: %d bytes\n", size)
+
+
+
+*/
+
+// GetServerData returns the filename, filesize, file type, accepts range requests, and final URL of the server
+// It also handles errors and returns the error message
+//
+// Working:
+//   - The function takes a downloadURL as input
+//   - The function makes a HEAD request at first to the provided downloadURL
+//   - If the request fails, it makes a GET request to the provided downloadURL
+//   - If the request is successful, it returns the filename, filesize, file type, accepts range requests, and final URL of the server
+//   - If the request fails, it returns an error message
+//
+// Parameters:
+//   - downloadURL: The URL of the file to download
+//
+// Returns:
+//   - *ServerData: A struct containing the filename, filesize, file type, accepts range requests, and final URL of the server
+//   - error: An error message if the function fails
+//
+// Example:
+//
+//	func main(){
+//		url := "https://example.com/sample.pdf"
+//		info, err := getServerData(url)
+//
+//		if err != nil {
+//			fmt.Println("Error:", err)
+//			return
+//		}
+//
+//		fmt.Printf("Filename: %s\n", info.Filename)
+//		fmt.Printf("Size: %d bytes\n", info.Filesize)
+//		fmt.Printf("Filetype: %s\n", info.Filetype)
+//		fmt.Printf("Accepts Range Requests: %v\n", info.AcceptsRanges)
+//		fmt.Printf("Final URL after redirect: %s\n", info.FinalURL)
+//	}
+func GetServerData(downloadURL string) (*ServerData, error) {
 	client := &http.Client{
 		Timeout: 15 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -120,6 +192,24 @@ func getServerData(downloadURL string) (*ServerData, error) {
 	return data, nil
 }
 
+// mimeExtensionFromContentType
+// Helper function to extract file extension from Content-Type header
+//
+// Workflow:
+//
+//   - 1. Check if the Content-Type header contains a known file extension
+//   - 2. If not, return an empty string
+//
+// Parameters:
+//   - ct: The Content-Type header value
+//
+// Returns:
+//   - string: The file extension, or an empty string if not found
+//
+// Example:
+//
+//	extension := mimeExtensionFromContentType("text/html")
+//	fmt.Printf("File extension: %s\n", extension)
 func mimeExtensionFromContentType(ct string) string {
 	// Add more if needed
 	mapping := map[string]string{
