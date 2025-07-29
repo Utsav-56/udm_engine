@@ -11,11 +11,20 @@ import (
 	"time"
 )
 
+/*
+  File contains:
+  The code to get the metadata of a file hosted in a server
+*/
+
 // ServerData struct to store the server data
 // Stores the data of the metadata of the file hosted in a server
 //
-//
-
+// Parameters:
+//   - Filename: The name of the file
+//   - Filesize: The size of the file in bytes
+//   - Filetype: The type of the file
+//   - AcceptsRanges: Boolean indicating if the server accepts range requests
+//   - FinalURL: The final URL of the file after following redirects
 type ServerData struct {
 	Filename      string
 	Filesize      int64
@@ -67,6 +76,10 @@ type ServerData struct {
 //   - If the request is successful, it returns the filename, filesize, file type, accepts range requests, and final URL of the server
 //   - If the request fails, it returns an error message
 //
+// Note:
+//   - The function handles errors and returns the error message
+//   - The function also includes a retry mechanism which will retry up to 3 times
+//
 // Parameters:
 //   - downloadURL: The URL of the file to download
 //
@@ -92,27 +105,72 @@ type ServerData struct {
 //		fmt.Printf("Final URL after redirect: %s\n", info.FinalURL)
 //	}
 func GetServerData(downloadURL string) (*ServerData, error) {
+	const maxRetries = 3
+	var lastErr error
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		data, err := tryGetServerData(downloadURL)
+		if err == nil {
+			return data, nil
+		}
+		lastErr = err
+		if attempt < maxRetries {
+			time.Sleep(2 * time.Second) // short wait before retry
+		}
+	}
+
+	return nil, fmt.Errorf("failed after %d attempts: %v", maxRetries, lastErr)
+}
+
+// tryGetServerData attempts to retrieve server data using a HEAD request, falling back to a GET request if necessary
+//
+// Working:
+//   - The function takes a downloadURL as input
+//   - The function makes a HEAD request to the provided downloadURL
+//   - If the HEAD request fails, it makes a GET request to the provided downloadURL
+//   - If the request is successful, it returns the server data
+//   - If the request fails, it returns an error message
+//
+// Parameters:
+//   - downloadURL: The URL of the file to download
+//
+// Returns:
+//   - *ServerData: A struct containing the filename, filesize, file type, accepts range requests, and final URL of the server
+//   - error: An error message if the function fails
+//
+// Example:
+//
+//	func main(){
+//		url := "https://example.com/sample.pdf"
+//		data, err := tryGetServerData(url)
+//
+//		if err != nil {
+//			fmt.Println("Error:", err)
+//			return
+//		}
+//
+//		fmt.Printf("Filename: %s\n", data.Filename)
+//		fmt.Printf("Size: %d bytes\n", data.Filesize)
+//		fmt.Printf("Filetype: %s\n", data.Filetype)
+//		fmt.Printf("Accepts Range Requests: %v\n", data.AcceptsRanges)
+//		fmt.Printf("Final URL after redirect: %s\n", data.FinalURL)
+//	}
+func tryGetServerData(downloadURL string) (*ServerData, error) {
 	client := &http.Client{
 		Timeout: 15 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			// We'll let redirect happen and record the last URL later
 			return nil
 		},
 	}
 
-	// Try HEAD first (cheap)
+	// 1. Try HEAD request
 	req, err := http.NewRequest("HEAD", downloadURL, nil)
 	if err != nil {
 		return nil, err
 	}
 	resp, err := client.Do(req)
 	if err != nil || resp.StatusCode >= 400 {
-
-		fmt.Printf("Error: %v\n", err)
-		fmt.Printf("Status Code: %d\n", resp.StatusCode)
-		fmt.Printf("Trying GET...\n")
-
-		// fallback to GET
+		// 2. Fallback to GET request
 		reqGet, err := http.NewRequest("GET", downloadURL, nil)
 		if err != nil {
 			return nil, err
@@ -124,21 +182,19 @@ func GetServerData(downloadURL string) (*ServerData, error) {
 	}
 	defer resp.Body.Close()
 
-	finalURL := resp.Request.URL.String() // after redirect
+	finalURL := resp.Request.URL.String()
 
-	// Initialize struct
 	data := &ServerData{
 		FinalURL: finalURL,
 	}
 
-	// 1. Filename from Content-Disposition
+	// 3. Content-Disposition based filename
 	cd := resp.Header.Get("Content-Disposition")
 	if cd != "" {
 		if _, params, err := mime.ParseMediaType(cd); err == nil {
 			if name, ok := params["filename"]; ok {
 				data.Filename = name
 			} else if name, ok := params["filename*"]; ok {
-				// decode UTF-8 format
 				if strings.HasPrefix(name, "UTF-8''") {
 					decoded, err := url.QueryUnescape(strings.TrimPrefix(name, "UTF-8''"))
 					if err == nil {
@@ -149,7 +205,7 @@ func GetServerData(downloadURL string) (*ServerData, error) {
 		}
 	}
 
-	// 2. Fallback to URL path
+	// 4. Fallback to path in URL
 	if data.Filename == "" {
 		if parsed, err := url.Parse(finalURL); err == nil {
 			base := path.Base(parsed.Path)
@@ -159,7 +215,7 @@ func GetServerData(downloadURL string) (*ServerData, error) {
 		}
 	}
 
-	// 3. Filesize
+	// 5. Content-Length
 	cl := resp.Header.Get("Content-Length")
 	if cl != "" {
 		var size int64
@@ -167,24 +223,21 @@ func GetServerData(downloadURL string) (*ServerData, error) {
 		data.Filesize = size
 	}
 
-	// 4. Filetype
-	ct := resp.Header.Get("Content-Type")
-	if ct != "" {
-		data.Filetype = ct
-	}
+	// 6. Content-Type
+	data.Filetype = resp.Header.Get("Content-Type")
 
-	// 5. Accept-Ranges
+	// 7. Accept-Ranges
 	if strings.Contains(resp.Header.Get("Accept-Ranges"), "bytes") {
 		data.AcceptsRanges = true
 	}
 
-	// 6. Final fallback filename (if nothing worked)
+	// 8. Last fallback for filename
 	if data.Filename == "" {
 		ext := mimeExtensionFromContentType(data.Filetype)
 		data.Filename = "downloaded_file" + ext
 	}
 
-	// Optional: Discard body if GET was used (to avoid partial download impact)
+	// If GET was used, discard the partial body
 	if resp.Request.Method == "GET" {
 		io.Copy(io.Discard, resp.Body)
 	}
@@ -192,13 +245,13 @@ func GetServerData(downloadURL string) (*ServerData, error) {
 	return data, nil
 }
 
-// mimeExtensionFromContentType
-// Helper function to extract file extension from Content-Type header
+// mimeExtensionFromContentType extracts the file extension from a Content-Type header
 //
-// Workflow:
-//
-//   - 1. Check if the Content-Type header contains a known file extension
-//   - 2. If not, return an empty string
+// Working:
+//   - The function takes a Content-Type header value as input
+//   - The function checks if the Content-Type header contains a known file extension
+//   - If a match is found, it returns the file extension
+//   - If no match is found, it returns an empty string
 //
 // Parameters:
 //   - ct: The Content-Type header value
