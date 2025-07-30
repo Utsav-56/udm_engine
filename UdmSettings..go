@@ -266,3 +266,16 @@ func GenerateSettingsFromJsonFile(jsonPath string) Settings {
 	}
 	return *settings
 }
+
+func (s *Settings) ShouldCapture(filename string) bool {
+	outputDir := s.GetOutputDirForFile(filename)
+	return outputDir != s.getDefaultOutputDir()
+}
+
+func ShouldCapture(filename string) bool {
+	settings, err := LoadSettings("udmConfigs.json")
+	if err != nil {
+		return false
+	}
+	return settings.ShouldCapture(filename)
+}
