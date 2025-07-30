@@ -1,4 +1,4 @@
-package main
+package udm
 
 // DivideChunks divides a file of the given size into a specified number of chunks,
 // returning a slice where each element represents the size of a chunk in bytes.
@@ -15,19 +15,16 @@ package main
 //   - Any remainder bytes (if fileSize is not evenly divisible by chunkCount)
 //     are added to the second-to-last chunk to avoid underflow in the last chunk.
 //
-//
 // Example:
 //
-//
 // chunks := DivideChunks(info.Filesize, 8)
-// for i, chunkSize := range chunks {
-// 	fmt.Printf("Chunk %d: %d \n", i, chunkSize)
-// 	totalChunkSize += int(chunkSize)
-// }
+//
+//	for i, chunkSize := range chunks {
+//		fmt.Printf("Chunk %d: %d \n", i, chunkSize)
+//		totalChunkSize += int(chunkSize)
+//	}
 //
 // fmt.Printf("TOtal chunk size got :: %d", totalChunkSize)
-//
-//
 func DivideChunks(fileSize int64, chunkCount int) []int64 {
 	chunks := make([]int64, chunkCount)
 
