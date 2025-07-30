@@ -47,6 +47,52 @@ type PauseController struct {
 	isPaused bool
 }
 
+// NewPauseController creates a new PauseController instance.
+//
+// Returns:
+//   - *PauseController: Initialized pause controller
+func NewPauseController() *PauseController {
+	pc := &PauseController{
+		isPaused: false,
+	}
+	pc.cond = sync.NewCond(&pc.mu)
+	return pc
+}
+
+// Pause sets the controller to paused state.
+func (pc *PauseController) Pause() {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+	pc.isPaused = true
+}
+
+// Resume sets the controller to resumed state and wakes up waiting goroutines.
+func (pc *PauseController) Resume() {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+	pc.isPaused = false
+	pc.cond.Broadcast()
+}
+
+// IsPaused returns the current pause state.
+//
+// Returns:
+//   - bool: True if paused, false if running
+func (pc *PauseController) IsPaused() bool {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+	return pc.isPaused
+}
+
+// WaitIfPaused blocks the calling goroutine while the controller is paused.
+func (pc *PauseController) WaitIfPaused() {
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+	for pc.isPaused {
+		pc.cond.Wait()
+	}
+}
+
 // Fileinfo contains the final info of file it is actual file path where it is downloaded
 type FileInfo struct {
 	Dir      string
@@ -130,9 +176,84 @@ type Worker struct {
 
 type ProgressTracker struct {
 	mu             sync.Mutex
-	BytesCompleted int64
-	LastReported   time.Time
-	SpeedBps       float64
+	BytesCompleted int64         // Total bytes downloaded so far
+	TotalBytes     int64         // Total file size (if known)
+	LastReported   time.Time     // Last time progress was reported
+	LastCheckTime  time.Time     // Last time progress was checked
+	SpeedBps       float64       // Current download speed in bytes per second
+	Percentage     float64       // Download completion percentage (0-100)
+	ETA            time.Duration // Estimated time remaining
+	BytesPerSecond int64         // Average bytes per second since start
+	StartTime      time.Time     // When download started
+}
+
+// UpdateProgress updates the progress tracker with new data
+// and calculates derived metrics like speed, percentage, and ETA.
+//
+// Parameters:
+//   - bytesRead: Number of new bytes downloaded
+//   - totalSize: Total file size (if known, 0 if unknown)
+func (pt *ProgressTracker) UpdateProgress(bytesRead int64, totalSize int64) {
+	pt.mu.Lock()
+	defer pt.mu.Unlock()
+
+	now := time.Now()
+
+	// Initialize start time if not set
+	if pt.StartTime.IsZero() {
+		pt.StartTime = now
+	}
+
+	// Update basic metrics
+	pt.BytesCompleted += bytesRead
+	pt.TotalBytes = totalSize
+	pt.LastCheckTime = now
+
+	// Calculate percentage if total size is known
+	if totalSize > 0 {
+		pt.Percentage = float64(pt.BytesCompleted) / float64(totalSize) * 100
+		if pt.Percentage > 100 {
+			pt.Percentage = 100
+		}
+	}
+
+	// Calculate speed (only if we have a previous report time)
+	if !pt.LastReported.IsZero() {
+		elapsed := now.Sub(pt.LastReported).Seconds()
+		if elapsed > 0 {
+			pt.SpeedBps = float64(bytesRead) / elapsed
+		}
+	}
+
+	// Calculate average speed since start
+	totalElapsed := now.Sub(pt.StartTime).Seconds()
+	if totalElapsed > 0 {
+		pt.BytesPerSecond = int64(float64(pt.BytesCompleted) / totalElapsed)
+	}
+
+	// Calculate ETA if we have speed and total size
+	if pt.SpeedBps > 0 && totalSize > 0 && pt.BytesCompleted < totalSize {
+		remainingBytes := totalSize - pt.BytesCompleted
+		etaSeconds := float64(remainingBytes) / pt.SpeedBps
+		pt.ETA = time.Duration(etaSeconds) * time.Second
+	}
+
+	pt.LastReported = now
+}
+
+// GetProgressInfo returns current progress information in a thread-safe manner.
+//
+// Returns:
+//   - bytesCompleted: Number of bytes downloaded
+//   - totalBytes: Total file size (0 if unknown)
+//   - percentage: Completion percentage (0-100)
+//   - speedBps: Current speed in bytes per second
+//   - eta: Estimated time remaining
+func (pt *ProgressTracker) GetProgressInfo() (bytesCompleted, totalBytes int64, percentage, speedBps float64, eta time.Duration) {
+	pt.mu.Lock()
+	defer pt.mu.Unlock()
+
+	return pt.BytesCompleted, pt.TotalBytes, pt.Percentage, pt.SpeedBps, pt.ETA
 }
 
 func (d *Downloader) getUserPreferredFilename() string {

@@ -1,7 +1,5 @@
 package main
 
-import "udm/ufs"
-
 func main() {
 	// url := "https://drive.usercontent.google.com/download?id=1d1EBTcLHYQiv93O4nyBBjbK_Wc-2f5qX&export=download&authuser=0&confirm=t&uuid=5cccf6aa-fc97-4bff-89f3-e4339a189778&at=AN8xHoo83pMm2eQ2GwbC6YHA5eK0:1753245767095"
 	// info, err := GetServerData(url)
@@ -28,22 +26,24 @@ func main() {
 
 	// fmt.Printf("TOtal chunk size got :: %d", totalChunkSize)
 
-	filename := ufs.GenerateUniqueFilename("go.mod")
-	println("Generated unique filename:", filename)
+	// filename := ufs.GenerateUniqueFilename("go.mod")
+	// println("Generated unique filename:", filename)
 
-	chunkNames := ufs.GenerateChunkFileNames(filename, 8, "./chunks/")
-	for _, chunkName := range chunkNames {
-		println("Chunk Name:", chunkName)
-	}
+	// chunkNames := ufs.GenerateChunkFileNames(filename, 8, "./chunks/")
+	// for _, chunkName := range chunkNames {
+	// 	println("Chunk Name:", chunkName)
+	// }
 
-	err := ufs.GenerateChunkFiles(chunkNames)
-	if err != nil {
-		println("Error generating chunk files:", err)
-	}
+	// err := ufs.GenerateChunkFiles(chunkNames)
+	// if err != nil {
+	// 	println("Error generating chunk files:", err)
+	// }
 
-	err = ufs.MergeChunkFiles(chunkNames, "./"+filename)
-	if err != nil {
-		println("Error merging chunk files:", err)
-	}
+	// err = ufs.MergeChunkFiles(chunkNames, "./"+filename)
+	// if err != nil {
+	// 	println("Error merging chunk files:", err)
+	// }
+
+	runExamples()
 
 }
