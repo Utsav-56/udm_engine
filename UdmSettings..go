@@ -292,3 +292,19 @@ func ShouldCapture(filename string) bool {
 	}
 	return settings.ShouldCapture(filename)
 }
+
+func GetSettings() *Settings {
+	settings, err := LoadSettings("udmConfigs.json")
+	if err != nil {
+		panic(err)
+	}
+	return settings
+}
+
+func GetOutputDirForFile(filename string) string {
+	settings, err := LoadSettings("udmConfigs.json")
+	if err != nil {
+		panic(err)
+	}
+	return settings.GetOutputDirForFile(filename)
+}
