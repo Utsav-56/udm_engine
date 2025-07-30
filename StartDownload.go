@@ -93,16 +93,44 @@ func (d *Downloader) Prefetch() error {
 // executeDownloadStrategy chooses and executes the appropriate download method
 // based on server capabilities and file characteristics.
 func (d *Downloader) executeDownloadStrategy() {
-	// For now, always use single stream
-	// Multi-stream will be implemented in the future
-	if !d.ServerHeaders.AcceptsRanges {
-		// Server doesn't support ranges - must use single stream
-		d.DownloadSingleStream()
+	// Check if server supports range requests and file size is sufficient for multi-stream
+	if d.ServerHeaders.AcceptsRanges && d.shouldUseMultiStream() {
+		// Use multi-stream download for large files with range support
+		d.DownloadMultiStream()
 	} else {
-		// Server supports ranges - use single stream for now
-		// TODO: Implement multi-stream download for large files
+		// Use single-stream download for small files or servers without range support
 		d.DownloadSingleStream()
 	}
+}
+
+// shouldUseMultiStream determines if multi-stream download should be used
+// based on file size and server capabilities.
+//
+// Returns:
+//   - bool: True if multi-stream download should be used
+func (d *Downloader) shouldUseMultiStream() bool {
+	// Don't use multi-stream if ranges aren't supported
+	if !d.ServerHeaders.AcceptsRanges {
+		return false
+	}
+
+	// Don't use multi-stream if file size is unknown
+	if d.ServerHeaders.Filesize <= 0 {
+		return false
+	}
+
+	// Use multi-stream for files larger than 10MB
+	const minSizeForMultiStream = 10 * 1024 * 1024 // 10MB
+	if d.ServerHeaders.Filesize < minSizeForMultiStream {
+		return false
+	}
+
+	// Check if user explicitly requested single stream (threadCount = 1)
+	if d.getThreadCount() == 1 {
+		return false
+	}
+
+	return true
 }
 
 // CheckPreferences validates and applies user preferences for the download.

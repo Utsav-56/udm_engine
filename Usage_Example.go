@@ -44,6 +44,7 @@ func main() {
 	// 	println("Error merging chunk files:", err)
 	// }
 
-	runExamples()
+	// runExamples()
 
+	runMultiStreamTests()
 }
