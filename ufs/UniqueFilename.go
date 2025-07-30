@@ -174,3 +174,11 @@ func GenerateUniqueFilename(path string) string {
 		}
 	}
 }
+
+func FileExtensionWithoutDot(filename string) string {
+	extension := FileExtension(filename)
+	if extension[0] == '.' {
+		extension = extension[1:]
+	}
+	return extension
+}
