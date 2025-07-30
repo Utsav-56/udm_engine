@@ -46,6 +46,9 @@ func (d *Downloader) StartDownload() {
 	// Apply settings to downloader (after we have filename information)
 	UDMSettings.ApplySettingsToDownloader(d)
 
+	// Initialise the progress tracker
+	d.InitializeProgressTracker()
+
 	// Choose and execute download strategy
 	d.executeDownloadStrategy()
 }
@@ -215,4 +218,8 @@ func (d *Downloader) CheckPreferences() error {
 	d.fileInfo.FullPath = filepath.Join(d.fileInfo.Dir, d.fileInfo.Name)
 
 	return nil
+}
+
+func (d *Downloader) InitializeProgressTracker() {
+
 }

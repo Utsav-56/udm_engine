@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"time"
 )
 
 // Simple test function to verify settings system
-func main() {
+func TestSettings() {
 	fmt.Println("🧪 Testing UDM Settings System")
 	fmt.Println("==============================")
 
@@ -104,6 +105,42 @@ func main() {
 
 	fmt.Println("\n✅ Settings system test completed successfully!")
 	fmt.Println("🚀 The UDM engine is ready to use with configuration-based downloads!")
+
+	// Test 8: Download with settings
+	TestDownloadWithSettings()
+}
+
+func TestDownloadWithSettings() {
+	fmt.Println("🔗 Multi-Stream Download with Settings configs")
+	fmt.Println("===========================================")
+
+	downloader := &Downloader{
+		Url: "https://drive.usercontent.google.com/download?id=1jXGxICYRv8IK0EJuAnU7spPOPpGDB-8Z&export=download&authuser=0&confirm=t&uuid=5397232e-464d-4ecf-9cbe-c41c160cc23e&at=AN8xHorfVIxQFID0G8G0-Ielj9bz:1753871108370",
+		ID:  "single-stream-progress-demo",
+		// Prefs: UserPreferences{
+		// 	DownloadDir: "./downloads",
+		// 	fileName:    "single-stream-demo.bin",
+		// 	threadCount: , // Force single stream
+		// },
+		// DOnt give user prefrence to test the settings loading
+		UseProgressBar: true,
+	}
+
+	progressManager := NewProgressManager(downloader)
+	SetupProgressCallbacks(downloader, progressManager)
+
+	// Test control functionality
+	go func() {
+		time.Sleep(2 * time.Second)
+		fmt.Println("\n⏸️ Testing pause in Settings Test...")
+		downloader.Pause()
+
+		time.Sleep(2 * time.Second)
+		fmt.Println("▶️ Testing resume in Settings Test...")
+		downloader.Resume()
+	}()
+
+	downloader.StartDownload()
 }
 
 // formatFileSize formats bytes in human readable format
