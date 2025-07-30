@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"udm/ufs"
 	"udm/ujson"
 )
 
@@ -268,8 +269,20 @@ func GenerateSettingsFromJsonFile(jsonPath string) Settings {
 }
 
 func (s *Settings) ShouldCapture(filename string) bool {
-	outputDir := s.GetOutputDirForFile(filename)
-	return outputDir != s.getDefaultOutputDir()
+	extension := ufs.FileExtension(filename)
+	extension = strings.ToLower(extension)
+
+	// remove the dot
+	if extension[0] == '.' {
+		extension = extension[1:]
+	}
+
+	for _, ext := range s.Extensions {
+		if ext == extension {
+			return true
+		}
+	}
+	return false
 }
 
 func ShouldCapture(filename string) bool {
