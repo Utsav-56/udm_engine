@@ -10,17 +10,27 @@ import (
 // and choosing the appropriate download strategy (single-stream vs multi-stream).
 //
 // Process Flow:
-//  1. Prefetch server metadata and capabilities
-//  2. Check user preferences and setup file paths
-//  3. Determine download strategy based on server support
-//  4. Execute appropriate download method
+//  1. Initialize settings and apply configuration
+//  2. Prefetch server metadata and capabilities
+//  3. Check user preferences and setup file paths
+//  4. Determine download strategy based on server support and settings
+//  5. Execute appropriate download method
 //
 // Features:
 //   - Automatic server capability detection
-//   - Smart download strategy selection
-//   - User preference handling
+//   - Smart download strategy selection based on config file
+//   - Extension-based output directory selection
+//   - User preference handling with config fallbacks
 //   - Error handling and recovery
 func (d *Downloader) StartDownload() {
+	// Initialize settings if not already loaded
+	if UDMSettings == nil {
+		if err := InitializeSettings(); err != nil {
+			d.handleDownloadError(fmt.Errorf("failed to load settings: %v", err))
+			return
+		}
+	}
+
 	// Initialize download session
 	if err := d.initializeDownload(); err != nil {
 		d.handleDownloadError(err)
@@ -32,6 +42,9 @@ func (d *Downloader) StartDownload() {
 		d.handleDownloadError(err)
 		return
 	}
+
+	// Apply settings to downloader (after we have filename information)
+	UDMSettings.ApplySettingsToDownloader(d)
 
 	// Choose and execute download strategy
 	d.executeDownloadStrategy()
@@ -91,20 +104,27 @@ func (d *Downloader) Prefetch() error {
 }
 
 // executeDownloadStrategy chooses and executes the appropriate download method
-// based on server capabilities and file characteristics.
+// based on server capabilities, file characteristics, and configuration settings.
 func (d *Downloader) executeDownloadStrategy() {
-	// Check if server supports range requests and file size is sufficient for multi-stream
-	if d.ServerHeaders.AcceptsRanges && d.shouldUseMultiStream() {
+	// Check if we should force single stream based on file size and config
+	shouldUseSingle := false
+
+	if UDMSettings != nil {
+		shouldUseSingle = UDMSettings.ShouldUseSingleStream(d.ServerHeaders.Filesize)
+	}
+
+	// Check if server supports range requests and we should use multi-stream
+	if !shouldUseSingle && d.ServerHeaders.AcceptsRanges && d.shouldUseMultiStream() {
 		// Use multi-stream download for large files with range support
 		d.DownloadMultiStream()
 	} else {
-		// Use single-stream download for small files or servers without range support
+		// Use single-stream download for small files, no range support, or forced single-stream
 		d.DownloadSingleStream()
 	}
 }
 
 // shouldUseMultiStream determines if multi-stream download should be used
-// based on file size and server capabilities.
+// based on server capabilities and user preferences (not config file settings).
 //
 // Returns:
 //   - bool: True if multi-stream download should be used
@@ -119,23 +139,18 @@ func (d *Downloader) shouldUseMultiStream() bool {
 		return false
 	}
 
-	// Use multi-stream for files larger than 10MB
-	const minSizeForMultiStream = 10 * 1024 * 1024 // 10MB
-	if d.ServerHeaders.Filesize < minSizeForMultiStream {
-		return false
-	}
-
 	// Check if user explicitly requested single stream (threadCount = 1)
 	if d.getThreadCount() == 1 {
 		return false
 	}
 
+	// Note: File size check is now handled in executeDownloadStrategy() using config
 	return true
 }
 
 // CheckPreferences validates and applies user preferences for the download.
 // This function handles filename resolution, directory setup, and other
-// user-configurable options.
+// user-configurable options. Config file settings are applied as fallbacks.
 //
 // Returns:
 //   - error: Error if preference setup fails
@@ -162,9 +177,13 @@ func (d *Downloader) CheckPreferences() error {
 	}
 
 	// Determine download directory
+	// Priority: User preference > Config-based extension mapping > System default
 	if d.Prefs.DownloadDir != "" {
-		// Use user-specified directory
+		// Use user-specified directory (highest priority)
 		d.fileInfo.Dir = d.Prefs.DownloadDir
+	} else if UDMSettings != nil {
+		// Use config-based directory mapping for file extension
+		d.fileInfo.Dir = UDMSettings.GetOutputDirForFile(d.fileInfo.Name)
 	} else {
 		// Use OS default downloads directory
 		userHomeDir, err := os.UserHomeDir()
@@ -186,6 +205,11 @@ func (d *Downloader) CheckPreferences() error {
 		return fmt.Errorf("failed to resolve absolute path: %v", err)
 	}
 	d.fileInfo.Dir = absDir
+
+	// Create the directory if it doesn't exist
+	if err := os.MkdirAll(d.fileInfo.Dir, 0755); err != nil {
+		return fmt.Errorf("failed to create download directory: %v", err)
+	}
 
 	// Create full path
 	d.fileInfo.FullPath = filepath.Join(d.fileInfo.Dir, d.fileInfo.Name)

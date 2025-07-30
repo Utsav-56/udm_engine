@@ -282,11 +282,40 @@ func (d *Downloader) getDownloadDirectory() string {
 }
 
 func (d *Downloader) getThreadCount() int {
-	return d.Prefs.threadCount
+	// Always prioritize config file settings for thread count
+	if UDMSettings != nil {
+		configThreadCount := UDMSettings.GetThreadCount()
+		// If user explicitly set threadCount, use it, otherwise use config
+		if d.Prefs.threadCount > 0 {
+			return d.Prefs.threadCount
+		}
+		return configThreadCount
+	}
+
+	// Fallback if no settings loaded
+	if d.Prefs.threadCount > 0 {
+		return d.Prefs.threadCount
+	}
+
+	return 8 // Default fallback
 }
 
 func (d *Downloader) getRetryCount() int {
-	return d.Prefs.maxRetries
+	// Use config file settings with user preference fallback
+	if UDMSettings != nil {
+		configRetries := UDMSettings.GetMaxRetries()
+		if d.Prefs.maxRetries > 0 {
+			return d.Prefs.maxRetries
+		}
+		return configRetries
+	}
+
+	// Fallback if no settings loaded
+	if d.Prefs.maxRetries > 0 {
+		return d.Prefs.maxRetries
+	}
+
+	return 3 // Default fallback
 }
 
 // EnableProgressBar enables the visual progress bar display

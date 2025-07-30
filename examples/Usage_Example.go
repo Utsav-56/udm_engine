@@ -116,7 +116,7 @@ func MultiStreamWithProgressBar() {
 	downloader.StartDownload()
 }
 
-func main() {
+func Main() {
 	// Original commented code preserved for reference
 	// url := "https://drive.usercontent.google.com/download?id=1d1EBTcLHYQiv93O4nyBBjbK_Wc-2f5qX&export=download&authuser=0&confirm=t&uuid=5cccf6aa-fc97-4bff-89f3-e4339a189778&at=AN8xHoo83pMm2eQ2GwbC6YHA5eK0:1753245767095"
 	// info, err := GetServerData(url)
