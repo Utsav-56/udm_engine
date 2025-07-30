@@ -171,14 +171,15 @@ func tryGetServerData(downloadURL string) (*ServerData, error) {
 	resp, err := client.Do(req)
 	if err != nil || resp.StatusCode >= 400 {
 		// 2. Fallback to GET request
-		reqGet, err := http.NewRequest("GET", downloadURL, nil)
-		if err != nil {
-			return nil, err
-		}
-		resp, err = client.Do(reqGet)
-		if err != nil {
-			return nil, err
-		}
+		// reqGet, err := http.NewRequest("GET", downloadURL, nil)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// resp, err = client.Do(reqGet)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -274,6 +275,33 @@ func mimeExtensionFromContentType(ct string) string {
 	}
 	if ext, ok := mapping[ct]; ok {
 		return ext
+	}
+	return ""
+}
+
+func extractFilename(resp *http.Response) string {
+	cd := resp.Header.Get("Content-Disposition")
+	if cd != "" {
+		if _, params, err := mime.ParseMediaType(cd); err == nil {
+			if name, ok := params["filename"]; ok {
+				return name
+			} else if name, ok := params["filename*"]; ok {
+				if strings.HasPrefix(name, "UTF-8''") {
+					decoded, err := url.QueryUnescape(strings.TrimPrefix(name, "UTF-8''"))
+					if err == nil {
+						return decoded
+					}
+				}
+			}
+		}
+	}
+
+	parsed, err := url.Parse(resp.Request.URL.String())
+	if err == nil {
+		base := path.Base(parsed.Path)
+		if base != "" && strings.Contains(base, ".") {
+			return base
+		}
 	}
 	return ""
 }

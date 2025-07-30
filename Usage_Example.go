@@ -36,4 +36,14 @@ func main() {
 		println("Chunk Name:", chunkName)
 	}
 
+	err := ufs.GenerateChunkFiles(chunkNames)
+	if err != nil {
+		println("Error generating chunk files:", err)
+	}
+
+	err = ufs.MergeChunkFiles(chunkNames, "./"+filename)
+	if err != nil {
+		println("Error merging chunk files:", err)
+	}
+
 }
