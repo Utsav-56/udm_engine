@@ -176,8 +176,6 @@ func (d *Downloader) getOptimalThreadCount() int {
 		return userThreadCount
 	}
 
-	return 8
-
 	// Auto-determine based on file size
 	fileSize := d.ServerHeaders.Filesize
 	switch {
@@ -188,7 +186,7 @@ func (d *Downloader) getOptimalThreadCount() int {
 	case fileSize < 1024*1024*1024: // < 1GB
 		return 8
 	default: // >= 1GB
-		return 16
+		return 12
 	}
 }
 

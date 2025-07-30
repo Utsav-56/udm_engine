@@ -139,6 +139,10 @@ type Downloader struct {
 	Status       string
 	Error        error
 	OutputPath   string
+
+	// Progress bar support
+	ChunkProgress  []ChunkProgressData // Progress tracking for individual chunks
+	UseProgressBar bool                // Whether to show progress bar instead of text output
 }
 
 // Download statuses
@@ -185,6 +189,19 @@ type ProgressTracker struct {
 	ETA            time.Duration // Estimated time remaining
 	BytesPerSecond int64         // Average bytes per second since start
 	StartTime      time.Time     // When download started
+
+	// Progress bar integration
+	ProgressModel interface{} // Will hold the UDM progress model
+	ShowProgress  bool        // Whether to show progress bar
+}
+
+// ChunkProgressData represents progress for individual chunks in multi-stream downloads
+type ChunkProgressData struct {
+	Index           int
+	Percentage      float64
+	IsComplete      bool
+	BytesDownloaded int64
+	TotalBytes      int64
 }
 
 // UpdateProgress updates the progress tracker with new data
@@ -270,4 +287,54 @@ func (d *Downloader) getThreadCount() int {
 
 func (d *Downloader) getRetryCount() int {
 	return d.Prefs.maxRetries
+}
+
+// EnableProgressBar enables the visual progress bar display
+func (d *Downloader) EnableProgressBar() {
+	d.UseProgressBar = true
+	d.Progress.ShowProgress = true
+}
+
+// DisableProgressBar disables the visual progress bar and uses text output
+func (d *Downloader) DisableProgressBar() {
+	d.UseProgressBar = false
+	d.Progress.ShowProgress = false
+}
+
+// InitializeChunkProgress initializes chunk progress tracking for multi-stream downloads
+func (d *Downloader) InitializeChunkProgress(chunkCount int) {
+	d.ChunkProgress = make([]ChunkProgressData, chunkCount)
+	for i := range d.ChunkProgress {
+		d.ChunkProgress[i] = ChunkProgressData{
+			Index:           i,
+			Percentage:      0.0,
+			IsComplete:      false,
+			BytesDownloaded: 0,
+			TotalBytes:      0,
+		}
+	}
+}
+
+// UpdateChunkProgress updates progress for a specific chunk
+func (d *Downloader) UpdateChunkProgress(chunkIndex int, bytesDownloaded, totalBytes int64) {
+	if chunkIndex >= 0 && chunkIndex < len(d.ChunkProgress) {
+		d.ChunkProgress[chunkIndex].BytesDownloaded = bytesDownloaded
+		d.ChunkProgress[chunkIndex].TotalBytes = totalBytes
+
+		if totalBytes > 0 {
+			d.ChunkProgress[chunkIndex].Percentage = float64(bytesDownloaded) / float64(totalBytes) * 100
+		}
+
+		d.ChunkProgress[chunkIndex].IsComplete = (bytesDownloaded >= totalBytes && totalBytes > 0)
+	}
+}
+
+// GetChunkProgressData returns the current chunk progress for display
+func (d *Downloader) GetChunkProgressData() []ChunkProgressData {
+	return d.ChunkProgress
+}
+
+// IsMultiStreamDownload returns true if this is a multi-stream download
+func (d *Downloader) IsMultiStreamDownload() bool {
+	return len(d.ChunkProgress) > 1
 }

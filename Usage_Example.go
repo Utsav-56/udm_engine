@@ -1,6 +1,123 @@
 package main
 
+import (
+	"fmt"
+	"time"
+)
+
+// Usage_Example demonstrates how to use UDM with both text output and progress bar modes
+func Usage_Example() {
+	fmt.Println("📚 UDM Complete Usage Example")
+	fmt.Println("=============================")
+	fmt.Println()
+
+	// Example 1: Simple download with text output (traditional mode)
+	fmt.Println("🔤 Example 1: Text Output Mode")
+	fmt.Println("------------------------------")
+
+	textDownloader := &Downloader{
+		Url: "https://drive.usercontent.google.com/download?id=1d1EBTcLHYQiv93O4nyBBjbK_Wc-2f5qX&export=download&authuser=0&confirm=t&uuid=5cccf6aa-fc97-4bff-89f3-e4339a189778&at=AN8xHoo83pMm2eQ2GwbC6YHA5eK0:1753245767095", // 5MB test file
+		ID:  "text-mode-example",
+		Prefs: UserPreferences{
+			DownloadDir: "./downloads",
+			fileName:    "text-mode-file.bin",
+			threadCount: 4,
+			maxRetries:  3,
+		},
+		UseProgressBar: false, // Traditional text output
+		Callbacks: &Callbacks{
+			OnStart: func(d *Downloader) {
+				fmt.Printf("📥 Started: %s\n", d.fileInfo.Name)
+			},
+			OnProgress: func(d *Downloader) {
+				_, _, percentage, speed, eta := d.Progress.GetProgressInfo()
+				if int(percentage)%10 == 0 { // Every 10%
+					fmt.Printf("📊 %.0f%% | %.2f KB/s | ETA: %v\n",
+						percentage, speed/1024, eta.Round(time.Second))
+				}
+			},
+			OnFinish: func(d *Downloader) {
+				fmt.Printf("✅ Completed: %s\n", d.fileInfo.Name)
+			},
+		},
+	}
+
+	textDownloader.StartDownload()
+	time.Sleep(40 * time.Second) // Wait for completion
+
+	fmt.Println()
+	fmt.Println("🎨 Example 2: Progress Bar Mode")
+	fmt.Println("-------------------------------")
+	fmt.Println("The following download will show a beautiful progress bar:")
+
+	// Example 2: Download with enhanced progress bar
+	progressDownloader := &Downloader{
+		Url: "https://drive.usercontent.google.com/download?id=1d1EBTcLHYQiv93O4nyBBjbK_Wc-2f5qX&export=download&authuser=0&confirm=t&uuid=5cccf6aa-fc97-4bff-89f3-e4339a189778&at=AN8xHoo83pMm2eQ2GwbC6YHA5eK0:1753245767095", // 10MB test file
+		ID:  "progress-bar-example",
+		Prefs: UserPreferences{
+			DownloadDir: "./downloads",
+			fileName:    "progress-bar-file.bin",
+			threadCount: 6, // Multi-stream to show chunk progress
+			maxRetries:  3,
+		},
+		UseProgressBar: true, // Enable beautiful progress bar
+	}
+
+	// Setup progress bar
+	progressManager := NewProgressManager(progressDownloader)
+	SetupProgressCallbacks(progressDownloader, progressManager)
+
+	// Demonstrate pause/resume with visual feedback
+	go func() {
+		time.Sleep(2 * time.Second)
+		progressDownloader.Pause() // Progress bar turns yellow
+
+		time.Sleep(3 * time.Second)
+		progressDownloader.Resume() // Progress bar turns green
+	}()
+
+	progressDownloader.StartDownload()
+}
+
+// MultiStreamWithProgressBar demonstrates multi-stream download with progress tracking
+func MultiStreamWithProgressBar() {
+	fmt.Println("🧵 Multi-Stream Download with Progress Bar")
+	fmt.Println("==========================================")
+
+	downloader := &Downloader{
+		Url: "https://drive.usercontent.google.com/download?id=1d1EBTcLHYQiv93O4nyBBjbK_Wc-2f5qX&export=download&authuser=0&confirm=t&uuid=5cccf6aa-fc97-4bff-89f3-e4339a189778&at=AN8xHoo83pMm2eQ2GwbC6YHA5eK0:1753245767095", // 20MB file for better demo
+		ID:  "multi-stream-with-progress",
+		Prefs: UserPreferences{
+			DownloadDir: "./downloads",
+			fileName:    "multi-stream-progress.bin",
+			threadCount: 8, // 8 chunks for nice display
+		},
+		UseProgressBar: true,
+	}
+
+	// Initialize chunk progress tracking
+	downloader.InitializeChunkProgress(8)
+
+	// Setup progress manager
+	progressManager := NewProgressManager(downloader)
+	SetupProgressCallbacks(downloader, progressManager)
+
+	// Demo interactive controls
+	go func() {
+		time.Sleep(3 * time.Second)
+		fmt.Println("⏸️ Pausing all chunks...")
+		downloader.Pause()
+
+		time.Sleep(4 * time.Second)
+		fmt.Println("▶️ Resuming all chunks...")
+		downloader.Resume()
+	}()
+
+	downloader.StartDownload()
+}
+
 func main() {
+	// Original commented code preserved for reference
 	// url := "https://drive.usercontent.google.com/download?id=1d1EBTcLHYQiv93O4nyBBjbK_Wc-2f5qX&export=download&authuser=0&confirm=t&uuid=5cccf6aa-fc97-4bff-89f3-e4339a189778&at=AN8xHoo83pMm2eQ2GwbC6YHA5eK0:1753245767095"
 	// info, err := GetServerData(url)
 	// if err != nil {
@@ -29,22 +146,7 @@ func main() {
 	// filename := ufs.GenerateUniqueFilename("go.mod")
 	// println("Generated unique filename:", filename)
 
-	// chunkNames := ufs.GenerateChunkFileNames(filename, 8, "./chunks/")
-	// for _, chunkName := range chunkNames {
-	// 	println("Chunk Name:", chunkName)
-	// }
-
-	// err := ufs.GenerateChunkFiles(chunkNames)
-	// if err != nil {
-	// 	println("Error generating chunk files:", err)
-	// }
-
-	// err = ufs.MergeChunkFiles(chunkNames, "./"+filename)
-	// if err != nil {
-	// 	println("Error merging chunk files:", err)
-	// }
-
-	// runExamples()
-
-	runMultiStreamTests()
+	// Run the new progress bar examples
+	// Usage_Example()
+	MultiStreamWithProgressBar()
 }
