@@ -1,6 +1,7 @@
 package udm
 
 import (
+	"context"
 	"os"
 	"sync"
 	"time"
@@ -8,7 +9,7 @@ import (
 
 type UserPreferences struct {
 	DownloadDir string
-	fileName    string
+	FileName    string
 	threadCount int
 	maxRetries  int
 }
@@ -33,6 +34,7 @@ type ChunkData struct {
 // TimeInfo contains time-related information for the download
 // like start time, end time, and elapsed time
 // It is used to track the duration of the download process
+
 type TimeInfo struct {
 	StartTime time.Time     // Time when the download started
 	EndTime   time.Time     // Time when the download ended
@@ -89,6 +91,12 @@ type Downloader struct {
 	// Progress bar support
 	ChunkProgress  []ChunkProgressData // Progress tracking for individual chunks
 	UseProgressBar bool                // Whether to show progress bar instead of text output
+
+	// Cancelation support
+	cancelFunc context.CancelFunc
+	ctx        context.Context
+	mu         sync.Mutex
+	isStopped  bool
 }
 
 // Download statuses
@@ -220,7 +228,7 @@ func (pt *ProgressTracker) GetProgressInfo() (bytesCompleted, totalBytes int64, 
 }
 
 func (d *Downloader) getUserPreferredFilename() string {
-	return d.Prefs.fileName
+	return d.Prefs.FileName
 }
 
 func (d *Downloader) getDownloadDirectory() string {

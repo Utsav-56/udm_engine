@@ -4,9 +4,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"udm/ufs"
-	"udm/ujson"
+	"udl/udm/ufs"
+	"udl/udm/ujson"
 )
+
+var CONFIG_FILE_PATH = "D:\\GO_projects\\nudm_backend\\udm\\udmConfigs.json"
 
 type CategoryInfo struct {
 	Name      string   `json:"name"`
@@ -49,7 +51,7 @@ func LoadSettings(configPath string) (*Settings, error) {
 
 // InitializeSettings loads and initializes the global settings
 func InitializeSettings() error {
-	settings, err := LoadSettings("udmConfigs.json")
+	settings, err := LoadSettings(CONFIG_FILE_PATH)
 	if err != nil {
 		return err
 	}
@@ -286,7 +288,7 @@ func (s *Settings) ShouldCapture(filename string) bool {
 }
 
 func ShouldCapture(filename string) bool {
-	settings, err := LoadSettings("udmConfigs.json")
+	settings, err := LoadSettings(CONFIG_FILE_PATH)
 	if err != nil {
 		return false
 	}
@@ -294,7 +296,7 @@ func ShouldCapture(filename string) bool {
 }
 
 func GetSettings() *Settings {
-	settings, err := LoadSettings("udmConfigs.json")
+	settings, err := LoadSettings(CONFIG_FILE_PATH)
 	if err != nil {
 		panic(err)
 	}
@@ -302,7 +304,7 @@ func GetSettings() *Settings {
 }
 
 func GetOutputDirForFile(filename string) string {
-	settings, err := LoadSettings("udmConfigs.json")
+	settings, err := LoadSettings(CONFIG_FILE_PATH)
 	if err != nil {
 		panic(err)
 	}

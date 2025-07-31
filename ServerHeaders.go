@@ -171,18 +171,22 @@ func tryGetServerData(downloadURL string) (*ServerData, error) {
 	}
 	resp, err := client.Do(req)
 	if err == nil && resp.StatusCode >= 400 {
-		// 2. Fallback to GET request
-		reqGet, err := http.NewRequest("GET", downloadURL, nil)
-		if err != nil {
-			return nil, err
-		}
-		resp, err = client.Do(reqGet)
-		if err != nil {
-			return nil, err
-		}
-		if resp.StatusCode >= 400 {
-			return nil, fmt.Errorf("invalid response code after GET fallback: %d", resp.StatusCode)
-		}
+
+		// Dont use the GET fallback if the server is returning a 400
+		return nil, fmt.Errorf("invalid response code after HEAD: %d", resp.StatusCode)
+		
+		//// 2. Fallback to GET request
+		//reqGet, err := http.NewRequest("GET", downloadURL, nil)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//resp, err = client.Do(reqGet)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//if resp.StatusCode >= 400 {
+		//	return nil, fmt.Errorf("invalid response code after GET fallback: %d", resp.StatusCode)
+		//}
 	} else if err != nil {
 		return nil, err
 	}

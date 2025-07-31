@@ -109,8 +109,8 @@ func (d *Downloader) GetFilename() string {
 	}
 
 	// Fallback to user preference
-	if d.Prefs.fileName != "" {
-		return d.Prefs.fileName
+	if d.Prefs.FileName != "" {
+		return d.Prefs.FileName
 	}
 
 	return "unknown_file"

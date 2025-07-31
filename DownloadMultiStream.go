@@ -10,7 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"udm/ufs"
+	"udl/udm/ufs"
 )
 
 // DownloadMultiStream performs a multi-threaded download with pause/resume/cancel functionality.
@@ -58,12 +58,12 @@ func (d *Downloader) DownloadMultiStream() {
 		return
 	}
 
-	// Setup download context for cancellation
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	//// Setup download context for cancellation
+	//ctx, cancel := context.WithCancel(context.Background())
+	//defer cancel()
 
 	// Start multi-stream download process
-	d.executeMultiStreamDownload(ctx, cancel)
+	d.executeMultiStreamDownload(d.ctx, d.cancelFunc)
 }
 
 // initializeMultiStreamDownload prepares the multi-stream download session by validating

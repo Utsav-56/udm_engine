@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"udm/ufs"
+	"udl/udm/ufs"
 )
 
 // DownloadSingleStream performs a single-threaded download with pause/resume/cancel functionality.
@@ -56,12 +56,12 @@ func (d *Downloader) DownloadSingleStream() {
 		return
 	}
 
-	// Setup download context for cancellation
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	//// Setup download context for cancellation
+	//ctx, cancel := context.WithCancel(context.Background())
+	//defer cancel()
 
 	// Start download process
-	d.executeSingleStreamDownload(ctx, cancel)
+	d.executeSingleStreamDownload(d.ctx, d.cancelFunc)
 }
 
 // initializeSingleStreamDownload prepares the download session by validating

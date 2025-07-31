@@ -1,7 +1,9 @@
 package udm
 
 import (
+	"context"
 	"fmt"
+	"github.com/utsav-56/ulog"
 	"os"
 	"path/filepath"
 )
@@ -23,12 +25,26 @@ import (
 //   - User preference handling with config fallbacks
 //   - Error handling and recovery
 func (d *Downloader) StartDownload() {
+
+	// Initialize context with cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	d.ctx = ctx
+	d.cancelFunc = cancel
+	d.isStopped = false
+
 	// Initialize settings if not already loaded
 	if UDMSettings == nil {
 		if err := InitializeSettings(); err != nil {
 			d.handleDownloadError(fmt.Errorf("failed to load settings: %v", err))
 			return
 		}
+	}
+
+	if d.Url == "" {
+		//d.handleDownloadError(fmt.Errorf("no download URL provided"))
+		ulog.Error("No download URL provided", "UDM_START_DOWNLOAD_ERROR")
+
+		return
 	}
 
 	// Initialize download session
@@ -161,9 +177,9 @@ func (d *Downloader) CheckPreferences() error {
 	headers := d.ServerHeaders
 
 	// Determine filename based on preferences and server data
-	if d.Prefs.fileName != "" {
+	if d.Prefs.FileName != "" {
 		// User specified filename takes priority
-		d.fileInfo.Name = d.Prefs.fileName
+		d.fileInfo.Name = d.Prefs.FileName
 	} else if headers.Filename != "" {
 		// Use server-provided filename
 		d.fileInfo.Name = headers.Filename
